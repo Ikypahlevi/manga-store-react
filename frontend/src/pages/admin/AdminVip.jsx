@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const AdminVip = () => {
-    // Mock data
-    const listVip = [
-        { user: { username: 'whales123', rankTier: 'DIAMOND', mangaCoin: 5000 }, totalBooks: 120, totalSpent: 25000000 },
-        { user: { username: 'richkid_hn', rankTier: 'PLATINUM', mangaCoin: 3000 }, totalBooks: 85, totalSpent: 15000000 },
-        { user: { username: 'wibu_chua', rankTier: 'GOLD', mangaCoin: 1500 }, totalBooks: 40, totalSpent: 8000000 }
-    ];
+    const [listVip, setListVip] = useState([]);
+
+    useEffect(() => {
+        const fetchVip = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/users/vip');
+                setListVip(res.data);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchVip();
+    }, []);
 
     return (
         <div className="p-8">
@@ -46,18 +54,18 @@ const AdminVip = () => {
                                     <td className="px-6 py-4 border-r-4 border-black text-left">
                                         <div className="font-bold text-dark uppercase flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-full bg-secondary border-2 border-black flex items-center justify-center font-comic text-dark shadow-comic-hover">
-                                                {vip.user.username.substring(0, 1).toUpperCase()}
+                                                {vip.username.substring(0, 1).toUpperCase()}
                                             </div>
-                                            {vip.user.username}
+                                            {vip.username}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 border-r-4 border-black">
-                                        <span className="bg-dark text-white px-2 py-1 rounded border-2 border-black">{vip.user.rankTier}</span>
+                                        <span className="bg-dark text-white px-2 py-1 rounded border-2 border-black">{vip.rank_tier}</span>
                                     </td>
-                                    <td className="px-6 py-4 border-r-4 border-black text-secondary text-lg" style={{ WebkitTextStroke: '1px black' }}>💰 {vip.user.mangaCoin}</td>
-                                    <td className="px-6 py-4 border-r-4 border-black text-xl font-comic tracking-widest text-accent" style={{ WebkitTextStroke: '1px black' }}>📚 {vip.totalBooks} QUYỂN</td>
+                                    <td className="px-6 py-4 border-r-4 border-black text-secondary text-lg" style={{ WebkitTextStroke: '1px black' }}>💰 {vip.manga_coin}</td>
+                                    <td className="px-6 py-4 border-r-4 border-black text-xl font-comic tracking-widest text-accent" style={{ WebkitTextStroke: '1px black' }}>📚 {vip.total_books} QUYỂN</td>
                                     <td className="px-6 py-4 text-primary text-xl font-comic tracking-widest" style={{ WebkitTextStroke: '1px black' }}>
-                                        {vip.totalSpent.toLocaleString('vi-VN')}đ
+                                        {parseInt(vip.total_spent).toLocaleString('vi-VN')}đ
                                     </td>
                                 </tr>
                             ))

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
+import { useAuth } from '../context/AuthContext';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,26 +23,13 @@ const Login = () => {
     setError('');
 
     try {
-      // Mock login since backend isn't available
-      // const response = await axios.post('http://localhost:3000/api/auth/login', { username, password });
+      const response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
       
-      const mockUser = {
-        _id: '1',
-        username: username,
-        role: username === 'admin' ? 'ADMIN' : 'USER',
-        mangaCoin: 1000,
-        avatar: ''
-      };
-      const mockToken = 'mock-jwt-token';
-      
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      localStorage.setItem('token', mockToken);
+      login(response.data.token, response.data.user);
       
       navigate('/customer');
-      // Needs page reload or state update in Header to reflect user
-      window.location.reload(); 
     } catch (err) {
-      setError('Tên đăng nhập hoặc mật khẩu không đúng!');
+      setError(err.response?.data?.error || 'Tên đăng nhập hoặc mật khẩu không đúng!');
     }
   };
 

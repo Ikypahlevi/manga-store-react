@@ -1,22 +1,45 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 
 const AdminProducts = () => {
-    // Mock data for products
-    const [listSach, setListSach] = useState([
-        { maSach: '1', tenSach: 'Naruto Tập 1', theLoai: 'Hành động', giaTien: 25000, soLuong: 15, hinhAnh: 'naruto1.jpg' },
-        { maSach: '2', tenSach: 'One Piece Tập 100', theLoai: 'Hành động', giaTien: 25000, soLuong: 5, hinhAnh: 'op100.jpg' },
-        { maSach: '3', tenSach: 'Doraemon Truyện Dài', theLoai: 'Hài hước', giaTien: 20000, soLuong: 0, hinhAnh: null }
-    ]);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [listSach, setListSach] = useState([]);
+    const [totalPages, setTotalPages] = useState(1);
+    
+    const currentPage = parseInt(searchParams.get('page') || '1');
 
-    const totalPages = 5;
-    const currentPage = 1;
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await axios.get('http://localhost:5000/api/products', {
+                    params: { page: currentPage, limit: 10 }
+                });
+                if (response.data.success) {
+                    setListSach(response.data.products);
+                    setTotalPages(response.data.totalPages);
+                }
+            } catch (error) {
+                console.error('Error fetching products', error);
+            }
+        };
+        fetchProducts();
+    }, [currentPage]);
 
-    const handleDelete = (e, id) => {
+    const handleDelete = async (e, id) => {
         if (!window.confirm('Chắc chắn muốn phi tang cuốn truyện này chưa?')) {
             e.preventDefault();
         } else {
-            // Handle delete logic here
+            try {
+                const res = await axios.delete(`http://localhost:5000/api/products/${id}`);
+                if (res.data.message) {
+                    alert('Đã phi tang thành công!');
+                    setListSach(listSach.filter(s => s._id !== id));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Có lỗi xảy ra khi xóa!');
+            }
         }
     };
 
@@ -55,39 +78,39 @@ const AdminProducts = () => {
                             </thead>
                             <tbody className="divide-y-4 divide-black font-black uppercase text-sm">
                                 {listSach.map((sach) => (
-                                    <tr key={sach.maSach} className="hover:bg-gray-100 transition-colors">
-                                        <td className="px-6 py-4 border-r-4 border-black text-gray-500">#{sach.maSach}</td>
+                                    <tr key={sach._id} className="hover:bg-gray-100 transition-colors">
+                                        <td className="px-6 py-4 border-r-4 border-black text-gray-500">#{sach._id}</td>
                                         <td className="px-6 py-4 border-r-4 border-black">
                                             <div className="flex items-center gap-4">
-                                                {sach.hinhAnh ? (
+                                                {sach.image ? (
                                                     <div className="w-12 h-16 bg-white border-2 border-black shadow-comic overflow-hidden">
-                                                        <img src={`/img/${sach.hinhAnh}`} alt={sach.tenSach} className="w-full h-full object-cover" />
+                                                        <img src={sach.image} alt={sach.name} className="w-full h-full object-cover" />
                                                     </div>
                                                 ) : (
                                                     <div className="w-12 h-16 bg-gray-200 border-2 border-black flex items-center justify-center text-[10px] text-gray-400 font-comic">NO IMG</div>
                                                 )}
-                                                <span className="text-base text-dark">{sach.tenSach}</span>
+                                                <span className="text-base text-dark">{sach.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black text-gray-700">
-                                            <span className="bg-yellow-200 border-2 border-black px-2 py-1">{sach.theLoai || 'Khác'}</span>
+                                            <span className="bg-yellow-200 border-2 border-black px-2 py-1">{sach.category || 'Khác'}</span>
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black text-primary text-xl font-comic tracking-widest" style={{ WebkitTextStroke: '1px black' }}>
-                                            {sach.giaTien.toLocaleString('vi-VN')}đ
+                                            {sach.price.toLocaleString('vi-VN')}đ
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black">
-                                            {sach.soLuong > 10 ? (
-                                                <span className="bg-accent border-2 border-black px-3 py-1 text-dark shadow-comic">{sach.soLuong}</span>
-                                            ) : sach.soLuong > 0 ? (
-                                                <span className="bg-secondary border-2 border-black px-3 py-1 text-dark shadow-comic">{sach.soLuong}</span>
+                                            {sach.stock > 10 ? (
+                                                <span className="bg-accent border-2 border-black px-3 py-1 text-dark shadow-comic">{sach.stock}</span>
+                                            ) : sach.stock > 0 ? (
+                                                <span className="bg-secondary border-2 border-black px-3 py-1 text-dark shadow-comic">{sach.stock}</span>
                                             ) : (
                                                 <span className="bg-primary text-white border-2 border-black px-3 py-1 shadow-comic">CHÁY HÀNG!</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-3">
-                                                <Link to={`/admin/products/edit/${sach.maSach}`} className="bg-white border-2 border-black px-4 py-2 hover:bg-accent shadow-comic hover:-translate-y-1 transition text-dark">SỬA</Link>
-                                                <button onClick={(e) => handleDelete(e, sach.maSach)} className="bg-primary text-white border-2 border-black px-4 py-2 shadow-comic hover:bg-dark hover:-translate-y-1 transition">XÓA!</button>
+                                                <Link to={`/admin/products/edit/${sach._id}`} className="bg-white border-2 border-black px-4 py-2 hover:bg-accent shadow-comic hover:-translate-y-1 transition text-dark">SỬA</Link>
+                                                <button onClick={(e) => handleDelete(e, sach._id)} className="bg-primary text-white border-2 border-black px-4 py-2 shadow-comic hover:bg-dark hover:-translate-y-1 transition">XÓA!</button>
                                             </div>
                                         </td>
                                     </tr>

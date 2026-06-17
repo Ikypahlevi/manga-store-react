@@ -1,27 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Cart = () => {
-  const [cart, setCart] = useState([
-    { id: '1', name: 'One Piece Tập 100', price: 25000, quantity: 2, image: 'onepiece.jpg' },
-    { id: '2', name: 'Naruto Tập 72', price: 20000, quantity: 1, image: 'naruto.jpg' }
-  ]);
+  const [cart, setCart] = useState([]);
+  const { user } = useAuth();
+
+  const loadCart = async () => {
+    if (user) {
+      try {
+        const res = await axios.get('http://localhost:5000/api/cart');
+        const cartData = res.data;
+        const cartArray = Object.values(cartData).map(item => {
+            let imgPath = item.sach.hinh_anh || '';
+            if (imgPath && !imgPath.startsWith('/')) {
+                imgPath = imgPath.startsWith('img/') ? '/' + imgPath : '/img/' + imgPath;
+            }
+            return {
+                id: item.sach.ma_sach,
+                name: item.sach.ten_sach,
+                price: item.sach.gia_tien,
+                quantity: item.quantity,
+                image: imgPath
+            };
+        });
+        setCart(cartArray);
+      } catch (err) {
+        console.error('Error loading cart', err);
+      }
+    } else {
+      const guestCart = JSON.parse(localStorage.getItem('guestCart')) || [];
+      const cartArray = guestCart.map(item => {
+          let imgPath = item.image || '';
+          if (imgPath && !imgPath.startsWith('/')) {
+              imgPath = imgPath.startsWith('img/') ? '/' + imgPath : '/img/' + imgPath;
+          }
+          return {
+              id: item.maSach,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              image: imgPath
+          };
+      });
+      setCart(cartArray);
+    }
+  };
+
+  useEffect(() => {
+    loadCart();
+  }, [user]);
 
   const totalAmount = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  const updateQuantity = (id, delta) => {
-    setCart(cart.map(item => {
-      if (item.id === id) {
-        const newQty = item.quantity + delta;
-        return newQty > 0 ? { ...item, quantity: newQty } : item;
-      }
-      return item;
-    }));
+  const updateQuantity = async (id, delta) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    const newQty = item.quantity + delta;
+    if (newQty <= 0) return;
+
+    if (user) {
+        try {
+            await axios.put('http://localhost:5000/api/cart/update', { maSach: id, quantity: newQty });
+            loadCart();
+            window.dispatchEvent(new Event('cartUpdated'));
+        } catch (err) {
+            console.error('Error updating quantity', err);
+        }
+    } else {
+        const guestCart = JSON.parse(localStorage.getItem('guestCart')) || [];
+        const existingItem = guestCart.find(i => i.maSach === id);
+        if (existingItem) existingItem.quantity = newQty;
+        localStorage.setItem('guestCart', JSON.stringify(guestCart));
+        loadCart();
+        window.dispatchEvent(new Event('cartUpdated'));
+    }
   };
 
-  const removeItem = (id) => {
-    setCart(cart.filter(item => item.id !== id));
+  const removeItem = async (id) => {
+    if (user) {
+        try {
+            await axios.delete(`http://localhost:5000/api/cart/remove/${id}`);
+            loadCart();
+            window.dispatchEvent(new Event('cartUpdated'));
+        } catch (err) {
+            console.error('Error removing item', err);
+        }
+    } else {
+        const guestCart = JSON.parse(localStorage.getItem('guestCart')) || [];
+        const newCart = guestCart.filter(i => i.maSach !== id);
+        localStorage.setItem('guestCart', JSON.stringify(newCart));
+        loadCart();
+        window.dispatchEvent(new Event('cartUpdated'));
+    }
   };
 
   return (

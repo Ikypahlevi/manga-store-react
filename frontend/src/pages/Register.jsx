@@ -26,12 +26,11 @@ const Register = () => {
     setError('');
 
     try {
-      // Mock register
-      // await axios.post('http://localhost:3000/api/auth/register', { username, password });
-      alert('Đăng ký thành công!');
+      const response = await axios.post('http://localhost:5000/api/auth/register', { username, password });
+      alert(response.data.message || 'Đăng ký thành công!');
       navigate('/auth/login');
     } catch (err) {
-      setError('Tên đăng nhập đã tồn tại hoặc có lỗi xảy ra!');
+      setError(err.response?.data?.error || 'Tên đăng nhập đã tồn tại hoặc có lỗi xảy ra!');
     }
   };
 

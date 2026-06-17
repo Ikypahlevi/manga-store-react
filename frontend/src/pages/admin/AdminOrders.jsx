@@ -1,28 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const AdminOrders = () => {
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [listOrders, setListOrders] = useState([]);
 
-    // Mock data
-    const [listOrders, setListOrders] = useState([
-        { id: '101', customerName: 'Nguyen Van A', customerPhone: '0123456789', customerAddress: '123 ABC Street', totalAmount: 55000, orderDate: new Date(), status: 'PENDING' },
-        { id: '102', customerName: 'Tran Thi B', customerPhone: '0987654321', customerAddress: '456 XYZ Lane', totalAmount: 120000, orderDate: new Date(), status: 'SHIPPING' },
-        { id: '103', customerName: 'Le Van C', customerPhone: '0112233445', customerAddress: '789 DEF Blvd', totalAmount: 30000, orderDate: new Date(), status: 'COMPLETED' }
-    ]);
+    const loadOrders = async (keyword = '', status = '') => {
+        try {
+            const res = await axios.get('http://localhost:5000/api/orders/all', {
+                params: { keyword, status: status === 'ALL' ? '' : status }
+            });
+            setListOrders(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        loadOrders();
+    }, []);
 
     const handleSearch = (e) => {
         e.preventDefault();
-        console.log('Search:', search, 'Status:', statusFilter);
+        loadOrders(search, statusFilter);
     };
 
-    const handleUpdateStatus = (id, newStatus) => {
-        if (newStatus === 'CANCELLED' && !window.confirm('Chắc chắn muốn hủy đơn này?')) return;
+    const handleUpdateStatus = async (id, newStatus) => {
+        if (newStatus === 'Đã hủy' && !window.confirm('Chắc chắn muốn hủy đơn này?')) return;
         
-        setListOrders(prev => prev.map(order => 
-            order.id === id ? { ...order, status: newStatus } : order
-        ));
+        try {
+            await axios.put(`http://localhost:5000/api/orders/${id}/status`, { status: newStatus });
+            loadOrders(search, statusFilter);
+        } catch (err) {
+            console.error(err);
+            alert('Lỗi khi cập nhật trạng thái');
+        }
     };
 
     return (
@@ -46,10 +60,10 @@ const AdminOrders = () => {
                     <input type="text" name="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên khách hàng, Số điện thoại..." className="flex-grow w-full md:w-auto bg-gray-50 border-4 border-black p-3 font-bold uppercase focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 focus:shadow-comic transition-all" />
                     <select name="status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full md:w-auto bg-gray-50 border-4 border-black p-3 font-bold uppercase focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 focus:shadow-comic transition-all cursor-pointer">
                         <option value="ALL">TẤT CẢ TRẠNG THÁI</option>
-                        <option value="PENDING">CHỜ DUYỆT</option>
-                        <option value="SHIPPING">ĐANG GIAO</option>
-                        <option value="COMPLETED">ĐÃ GIAO</option>
-                        <option value="CANCELLED">ĐÃ HỦY</option>
+                        <option value="Chờ xác nhận">CHỜ XÁC NHẬN</option>
+                        <option value="Đang giao">ĐANG GIAO</option>
+                        <option value="Hoàn thành">HOÀN THÀNH</option>
+                        <option value="Đã hủy">ĐÃ HỦY</option>
                     </select>
                     <button type="submit" className="w-full md:w-auto bg-dark text-white font-black px-8 py-3 border-4 border-black shadow-comic hover:bg-primary hover:text-white transition hover:-translate-y-1 uppercase tracking-widest">TÌM KIẾM</button>
                 </form>
@@ -80,32 +94,32 @@ const AdminOrders = () => {
                                     <tr key={order.id} data-aos="fade-up" data-aos-delay={index * 50} className="hover:bg-gray-100 transition-colors">
                                         <td className="px-6 py-4 border-r-4 border-black text-gray-500 font-bold uppercase">#{order.id}</td>
                                         <td className="px-6 py-4 border-r-4 border-black text-left">
-                                            <div className="font-bold text-dark uppercase">{order.customerName}</div>
-                                            <div className="text-xs text-gray-500 mt-1">📞 {order.customerPhone}</div>
-                                            <div className="text-xs text-gray-500 mt-1 truncate max-w-[200px]" title={order.customerAddress}>📍 {order.customerAddress}</div>
+                                            <div className="font-bold text-dark uppercase">{order.customer_name}</div>
+                                            <div className="text-xs text-gray-500 mt-1">📞 {order.customer_phone}</div>
+                                            <div className="text-xs text-gray-500 mt-1 truncate max-w-[200px]" title={order.customer_address}>📍 {order.customer_address}</div>
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black text-primary text-xl font-comic tracking-widest"
                                             style={{ WebkitTextStroke: '1px black' }}>
-                                            {order.totalAmount.toLocaleString('vi-VN')}đ
+                                            {order.total_amount.toLocaleString('vi-VN')}đ
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black text-gray-600">
-                                            {order.orderDate.toLocaleString('vi-VN')}
+                                            {new Date(order.created_at).toLocaleString('vi-VN')}
                                         </td>
                                         <td className="px-6 py-4 border-r-4 border-black">
-                                            {order.status === 'PENDING' && <span className="bg-secondary border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">CHỜ DUYỆT</span>}
-                                            {order.status === 'SHIPPING' && <span className="bg-accent border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">ĐANG GIAO</span>}
-                                            {order.status === 'COMPLETED' && <span className="bg-[#06D6A0] border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">ĐÃ GIAO</span>}
-                                            {order.status === 'CANCELLED' && <span className="bg-primary text-white border-2 border-black px-3 py-1 shadow-comic font-bold uppercase">ĐÃ HỦY</span>}
+                                            {order.status === 'Chờ xác nhận' && <span className="bg-secondary border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">CHỜ DUYỆT</span>}
+                                            {order.status === 'Đang giao' && <span className="bg-accent border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">ĐANG GIAO</span>}
+                                            {order.status === 'Hoàn thành' && <span className="bg-[#06D6A0] border-2 border-black px-3 py-1 text-dark shadow-comic font-bold uppercase">ĐÃ GIAO</span>}
+                                            {order.status === 'Đã hủy' && <span className="bg-primary text-white border-2 border-black px-3 py-1 shadow-comic font-bold uppercase">ĐÃ HỦY</span>}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            {order.status === 'PENDING' && (
+                                            {order.status === 'Chờ xác nhận' && (
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button onClick={() => handleUpdateStatus(order.id, 'SHIPPING')} className="bg-accent border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition text-dark font-bold uppercase text-xs">DUYỆT & GIAO</button>
-                                                    <button onClick={() => handleUpdateStatus(order.id, 'CANCELLED')} className="bg-primary text-white border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition font-bold uppercase text-xs">HỦY!</button>
+                                                    <button onClick={() => handleUpdateStatus(order.id, 'Đang giao')} className="bg-accent border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition text-dark font-bold uppercase text-xs">DUYỆT & GIAO</button>
+                                                    <button onClick={() => handleUpdateStatus(order.id, 'Đã hủy')} className="bg-primary text-white border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition font-bold uppercase text-xs">HỦY!</button>
                                                 </div>
                                             )}
-                                            {order.status === 'SHIPPING' && (
-                                                <button onClick={() => handleUpdateStatus(order.id, 'COMPLETED')} className="inline-block bg-[#06D6A0] border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition text-dark font-bold uppercase text-xs">XÁC NHẬN ĐÃ GIAO</button>
+                                            {order.status === 'Đang giao' && (
+                                                <button onClick={() => handleUpdateStatus(order.id, 'Hoàn thành')} className="inline-block bg-[#06D6A0] border-2 border-black px-3 py-2 shadow-comic hover:-translate-y-1 transition text-dark font-bold uppercase text-xs">XÁC NHẬN ĐÃ GIAO</button>
                                             )}
                                         </td>
                                     </tr>

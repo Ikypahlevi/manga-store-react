@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AdminAddProduct = () => {
     const navigate = useNavigate();
@@ -21,10 +22,10 @@ const AdminAddProduct = () => {
         setHinhAnh(e.target.files[0]);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
-        const { tenSach, giaTien, soLuong } = formData;
+        const { tenSach, giaTien, soLuong, theLoai, trailerUrl } = formData;
         let errorMsg = '';
 
         if (!tenSach.trim() || tenSach.trim().length < 3) {
@@ -42,9 +43,24 @@ const AdminAddProduct = () => {
             return;
         }
 
-        // Handle success logic here
-        console.log('Form submitted', formData, hinhAnh);
-        navigate('/admin/products');
+        const data = new FormData();
+        data.append('ten_sach', tenSach);
+        data.append('gia_tien', giaTien);
+        data.append('so_luong', soLuong);
+        data.append('the_loai', theLoai);
+        data.append('trailer_url', trailerUrl);
+        data.append('image', hinhAnh);
+
+        try {
+            await axios.post('http://localhost:5000/api/products', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            alert('Thêm truyện thành công!');
+            navigate('/admin/products');
+        } catch (err) {
+            console.error(err);
+            alert('Có lỗi xảy ra khi thêm!');
+        }
     };
 
     return (

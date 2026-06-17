@@ -1,62 +1,87 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Gacha = () => {
+  const { user, setUser } = useAuth();
+  const navigate = useNavigate();
   const [isSpinning, setIsSpinning] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [resultTitle, setResultTitle] = useState('');
   const [resultMsg, setResultMsg] = useState('');
   const [flashImage, setFlashImage] = useState('https://api.dicebear.com/7.x/bottts/svg?seed=gacha&backgroundColor=ffb703');
   const [flashName, setFlashName] = useState('SẴN SÀNG!');
-  const user = JSON.parse(localStorage.getItem('user')) || { mangaCoin: 1000 };
 
-  const handleSpin = () => {
+  const handleSpin = async () => {
     if (isSpinning) return;
+    
+    if (!user) {
+        alert('Vui lòng đăng nhập để chơi Gacha!');
+        navigate('/login');
+        return;
+    }
+    
+    if (user.mangaCoin < 100) {
+        alert('Không đủ Manga Coin! Hãy nạp thêm.');
+        return;
+    }
+
     setIsSpinning(true);
 
-    const rewards = [
-      { name: 'Khóa móc khóa Naruto', image: 'naruto.jpg' },
-      { name: '1000 Manga Coin', image: 'coin.jpg' },
-      { name: 'Chúc bạn may mắn lần sau', image: 'miss.jpg' }
-    ];
+    try {
+        const res = await axios.post('http://localhost:5000/api/users/gacha/spin');
+        const { reward, newCoins } = res.data;
 
-    let currentFlashIndex = 0;
-    let currentDelay = 30;
-    const maxDelay = 400;
-    const duration = 3500;
-    const startTime = Date.now();
+        const rewardsMock = [
+          { name: 'Khóa móc khóa Naruto', image: 'naruto.jpg' },
+          { name: '1000 Manga Coin', image: 'coin.jpg' },
+          { name: 'Chúc bạn may mắn lần sau', image: 'miss.jpg' }
+        ];
 
-    const flashNext = () => {
-      const elapsed = Date.now() - startTime;
-      if (elapsed >= duration) {
-        const targetIndex = Math.floor(Math.random() * rewards.length);
-        setFlashImage(rewards[targetIndex].image);
-        setFlashName(rewards[targetIndex].name);
+        let currentFlashIndex = 0;
+        let currentDelay = 30;
+        const maxDelay = 400;
+        const duration = 3500;
+        const startTime = Date.now();
 
-        setTimeout(() => {
-          if (rewards[targetIndex].name.includes('may mắn')) {
-            setResultTitle('ĐEN THÔI!');
-          } else {
-            setResultTitle('CHÚC MỪNG!');
+        const flashNext = () => {
+          const elapsed = Date.now() - startTime;
+          if (elapsed >= duration) {
+            setFlashImage(reward.image);
+            setFlashName(reward.name);
+
+            setTimeout(() => {
+              if (reward.coinValue === 0 && reward.name.includes('may mắn')) {
+                setResultTitle('ĐEN THÔI!');
+              } else {
+                setResultTitle('CHÚC MỪNG!');
+              }
+              setResultMsg(`Bạn nhận được ${reward.name}`);
+              setUser({ ...user, mangaCoin: newCoins });
+              setShowResult(true);
+              setIsSpinning(false);
+            }, 500);
+            return;
           }
-          setResultMsg(`Bạn nhận được ${rewards[targetIndex].name}`);
-          setShowResult(true);
-          setIsSpinning(false);
-        }, 500);
-        return;
-      }
 
-      currentFlashIndex = (currentFlashIndex + 1) % rewards.length;
-      setFlashImage(rewards[currentFlashIndex].image);
-      setFlashName(rewards[currentFlashIndex].name);
+          currentFlashIndex = (currentFlashIndex + 1) % rewardsMock.length;
+          setFlashImage(rewardsMock[currentFlashIndex].image);
+          setFlashName(rewardsMock[currentFlashIndex].name);
 
-      const progress = elapsed / duration;
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      currentDelay = 30 + easeOut * (maxDelay - 30);
+          const progress = elapsed / duration;
+          const easeOut = 1 - Math.pow(1 - progress, 3);
+          currentDelay = 30 + easeOut * (maxDelay - 30);
 
-      setTimeout(flashNext, currentDelay);
-    };
+          setTimeout(flashNext, currentDelay);
+        };
 
-    flashNext();
+        flashNext();
+    } catch (err) {
+        console.error(err);
+        alert(err.response?.data?.error || 'Có lỗi xảy ra!');
+        setIsSpinning(false);
+    }
   };
 
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-
+import { useAuth } from '../context/AuthContext';
 const Detail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -12,44 +12,51 @@ const Detail = () => {
   const [showReader, setShowReader] = useState(false);
   const [readerPage, setReaderPage] = useState(1);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/api/products/${id}`);
+        const response = await axios.get(`http://localhost:5000/api/products/${id}`);
         if (response.data.success) {
           setProduct(response.data.product);
           setReviews(response.data.reviews || []);
           setIsFavorite(response.data.isFavorite || false);
-        } else {
-          mockData();
         }
       } catch (error) {
-        mockData();
+        console.error('Error fetching product:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    const mockData = () => {
-      setProduct({
-        _id: id,
-        name: 'One Piece Tập 100',
-        price: 25000,
-        stock: 10,
-        image: 'onepiece.jpg',
-        description: 'Bộ truyện cực kỳ hấp dẫn đang làm mưa làm gió trên bảng xếp hạng Oricon. Một khi đã đọc là không thể rời mắt. Mua ngay để bổ sung vào bộ sưu tập của bạn!'
-      });
-      setReviews([
-        { id: 1, username: 'Wibu_Chúa', rating: 5, comment: 'Truyện hay xuất sắc!', createdAt: new Date() }
-      ]);
-    };
-
     fetchProduct();
   }, [id]);
 
-  const addToCart = () => {
-    alert('Đã thêm vào giỏ hàng!');
-    // Trigger header update event or context
+  const addToCart = async () => {
+    if (!product) return;
+    
+    if (user) {
+        try {
+            await axios.post('http://localhost:5000/api/cart/add', { maSach: product._id, quantity: 1 });
+            alert('Đã thêm vào giỏ hàng!');
+            window.dispatchEvent(new Event('cartUpdated'));
+        } catch (error) {
+            console.error('Lỗi khi thêm vào giỏ:', error);
+            alert('Có lỗi xảy ra khi thêm vào giỏ hàng.');
+        }
+    } else {
+        // Guest cart
+        let guestCart = JSON.parse(localStorage.getItem('guestCart')) || [];
+        const existingItem = guestCart.find(item => item.maSach === product._id);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            guestCart.push({ maSach: product._id, quantity: 1, name: product.name, price: product.price, image: product.image });
+        }
+        localStorage.setItem('guestCart', JSON.stringify(guestCart));
+        alert('Đã thêm vào giỏ hàng (Guest)!');
+        window.dispatchEvent(new Event('cartUpdated'));
+    }
   };
 
   const toggleFavorite = () => {
@@ -80,7 +87,7 @@ const Detail = () => {
                 </div>
 
                 {product.image ? (
-                  <img src={`/img/${product.image}`} alt={product.name} className="w-full h-auto object-contain border-4 border-black dark:border-white shadow-comic dark:shadow-comic-dark animate-float-comic" style={{ imageRendering: '-webkit-optimize-contrast' }} />
+                  <img src={product.image} alt={product.name} className="w-full h-auto object-contain border-4 border-black dark:border-white shadow-comic dark:shadow-comic-dark animate-float-comic" style={{ imageRendering: '-webkit-optimize-contrast' }} />
                 ) : (
                   <div className="w-full h-40 md:h-80 flex flex-col items-center justify-center font-comic text-2xl md:text-3xl text-gray-400">NO IMAGE</div>
                 )}

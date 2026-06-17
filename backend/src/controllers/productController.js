@@ -1,5 +1,22 @@
 const SachDAO = require('../models/SachDAO');
 
+const mapProduct = (s) => {
+    let imgPath = s.hinh_anh || '';
+    if (imgPath && !imgPath.startsWith('/')) {
+        imgPath = imgPath.startsWith('img/') ? '/' + imgPath : '/img/' + imgPath;
+    }
+    return {
+        _id: s.ma_sach,
+        name: s.ten_sach,
+        price: s.gia_tien,
+        stock: s.so_luong,
+        image: imgPath,
+        description: s.mo_ta,
+        category: s.the_loai,
+        trailer_url: s.trailer_url
+    };
+};
+
 exports.getAll = async (req, res) => {
     try {
         const { minPrice, maxPrice, keyword, category, page, limit } = req.query;
@@ -13,18 +30,19 @@ exports.getAll = async (req, res) => {
             const data = await SachDAO.getSachByPage(offset, limitNum, minPrice, maxPrice, keyword, category);
             
             res.json({
-                data,
+                success: true,
+                products: data.map(mapProduct),
                 total,
                 page: pageNum,
                 totalPages: Math.ceil(total / limitNum)
             });
         } else {
             const data = await SachDAO.getAll();
-            res.json(data);
+            res.json({ success: true, products: data.map(mapProduct) });
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 };
 
@@ -33,13 +51,13 @@ exports.getById = async (req, res) => {
         const id = parseInt(req.params.id);
         const sach = await SachDAO.findByMaSach(id);
         if (sach) {
-            res.json(sach);
+            res.json({ success: true, product: mapProduct(sach) });
         } else {
-            res.status(404).json({ error: 'Sách không tồn tại' });
+            res.status(404).json({ success: false, error: 'Sách không tồn tại' });
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 };
 

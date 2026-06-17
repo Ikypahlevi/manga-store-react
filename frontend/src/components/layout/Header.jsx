@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
 
 const Header = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [cartSize, setCartSize] = useState(0);
-  const [user, setUser] = useState(null); // Load from local storage
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
@@ -18,13 +20,34 @@ const Header = () => {
       setIsDarkMode(false);
       document.documentElement.classList.remove('dark');
     }
-
-    // Mock load user from local storage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
   }, []);
+
+  useEffect(() => {
+    const loadCart = async () => {
+      if (user) {
+         try {
+             const res = await axios.get('http://localhost:5000/api/cart');
+             const totalItems = res.data.reduce((sum, item) => sum + item.quantity, 0);
+             setCartSize(totalItems);
+         } catch (e) {
+             console.error('Error fetching cart', e);
+         }
+      } else {
+         const guestCart = JSON.parse(localStorage.getItem('guestCart')) || [];
+         const totalItems = guestCart.reduce((sum, item) => sum + item.quantity, 0);
+         setCartSize(totalItems);
+      }
+    };
+    
+    loadCart();
+
+    const handleCartUpdate = () => {
+        loadCart();
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    return () => window.removeEventListener('cartUpdated', handleCartUpdate);
+  }, [user]);
 
   const toggleDarkMode = () => {
     if (isDarkMode) {
@@ -40,9 +63,7 @@ const Header = () => {
 
   const handleLogout = (e) => {
     e.preventDefault();
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setUser(null);
+    logout();
     navigate('/auth/login');
   };
 

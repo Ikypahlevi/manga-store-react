@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
@@ -7,16 +9,41 @@ const Checkout = () => {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrSuccess, setQrSuccess] = useState(false);
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user')) || null;
+
+  const { user } = useAuth();
+  const [customerName, setCustomerName] = useState(user?.username || '');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+
+  const submitOrder = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/orders/place', {
+        customerName,
+        customerPhone,
+        customerAddress,
+        voucherCode: null,
+        discountAmount: 0
+      });
+      alert('Chốt đơn thành công!');
+      window.dispatchEvent(new Event('cartUpdated'));
+      navigate('/customer');
+    } catch (err) {
+      console.error(err);
+      alert('Có lỗi xảy ra khi đặt hàng!');
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!user) {
+        alert('Vui lòng đăng nhập để đặt hàng!');
+        navigate('/auth/login');
+        return;
+    }
     if (paymentMethod === 'QR' && !qrSuccess) {
       setShowQRModal(true);
     } else {
-      // Simulate COD or successful QR submission
-      alert('Chốt đơn thành công!');
-      navigate('/customer');
+      submitOrder();
     }
   };
 
@@ -27,8 +54,7 @@ const Checkout = () => {
       setQrLoading(false);
       setTimeout(() => {
         setShowQRModal(false);
-        alert('Chốt đơn thành công!');
-        navigate('/customer');
+        submitOrder();
       }, 1500);
     }, 2000);
   };
@@ -61,15 +87,15 @@ const Checkout = () => {
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col">
               <label className="font-black text-dark dark:text-white uppercase mb-1">Tên Người Nhận <span className="text-primary">*</span></label>
-              <input type="text" required minLength="2" placeholder="Ví dụ: Lufy Mũ Rơm" className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic" />
+              <input type="text" required minLength="2" placeholder="Ví dụ: Lufy Mũ Rơm" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic" />
             </div>
             <div className="flex flex-col">
               <label className="font-black text-dark dark:text-white uppercase mb-1">Số Điện Thoại <span className="text-primary">*</span></label>
-              <input type="text" required placeholder="0987xxxxxx" className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic" />
+              <input type="text" required placeholder="0987xxxxxx" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic" />
             </div>
             <div className="flex flex-col flex-grow">
               <label className="font-black text-dark dark:text-white uppercase mb-1">Địa Chỉ <span className="text-primary">*</span></label>
-              <textarea required minLength="5" rows="3" placeholder="Ghi rõ số nhà..." className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic resize-none"></textarea>
+              <textarea required minLength="5" rows="3" placeholder="Ghi rõ số nhà..." value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border-4 border-black dark:border-white p-3 font-bold text-dark dark:text-white focus:bg-yellow-50 focus:outline-none focus:-translate-y-1 shadow-comic resize-none"></textarea>
             </div>
             <div className="flex flex-col mt-2">
               <label className="font-black text-dark dark:text-white uppercase mb-2">Phương thức thanh toán <span className="text-primary">*</span></label>

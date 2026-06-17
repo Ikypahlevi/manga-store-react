@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const Profile = () => {
-  const user = JSON.parse(localStorage.getItem('user')) || { username: 'Guest', role: 'USER', mangaCoin: 0, rankTier: 'WIBU CHUẨN', avatar: '' };
+  const { user } = useAuth();
   const [showOrderModal, setShowOrderModal] = useState(false);
-  
-  const favList = [];
-  const listOrders = [];
+  const [favList, setFavList] = useState([]);
+  const [listOrders, setListOrders] = useState([]);
+
+  useEffect(() => {
+      if (user) {
+          // Fetch favorites
+          axios.get('http://localhost:5000/api/user/favorites')
+              .then(res => setFavList(res.data))
+              .catch(err => console.error(err));
+          // Fetch orders
+          axios.get('http://localhost:5000/api/orders/my-orders')
+              .then(res => setListOrders(res.data))
+              .catch(err => console.error(err));
+      }
+  }, [user]);
+
+  if (!user) {
+      return <div className="text-center py-20 font-black text-2xl uppercase">Vui lòng đăng nhập!</div>;
+  }
 
   return (
     <div className="max-w-5xl mx-auto mb-16 px-4">
@@ -55,7 +74,38 @@ const Profile = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-12">
-          {/* list items here */}
+          {favList.map((sach, index) => {
+              let imgPath = sach.hinh_anh || '';
+              if (imgPath && !imgPath.startsWith('/')) {
+                  imgPath = imgPath.startsWith('img/') ? '/' + imgPath : '/img/' + imgPath;
+              }
+              return (
+                <div key={sach.ma_sach} className="manga-card-tilt bg-white dark:bg-gray-800 border-4 border-black dark:border-white shadow-comic dark:shadow-comic-dark hover:shadow-comic-lg transition-all flex flex-col group relative overflow-hidden transform animate-pulse-shadow">
+                    <div className="h-48 bg-gray-100 dark:bg-gray-700 border-b-4 border-black dark:border-white relative overflow-hidden">
+                        {imgPath ? (
+                            <img src={imgPath} alt={sach.ten_sach} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600">
+                                <span className="font-comic text-xl text-gray-400 dark:text-gray-300 transform -rotate-12">NO IMAGE</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-3 flex flex-col flex-grow bg-white dark:bg-gray-800">
+                        <h3 className="font-black text-sm text-dark dark:text-white line-clamp-2 mb-2 uppercase group-hover:text-primary transition-colors leading-tight">
+                            {sach.ten_sach}
+                        </h3>
+                        <div className="mt-auto pt-2 border-t-2 border-dashed border-gray-300 flex flex-col justify-center">
+                            <div className="text-lg font-comic text-primary tracking-widest">
+                                {sach.gia_tien.toLocaleString()}đ
+                            </div>
+                            <Link to={`/customer/detail/${sach.ma_sach}`} className="bg-accent border-2 border-black text-dark text-center mt-2 font-black px-2 py-1 hover:bg-secondary transition-colors text-xs shadow-comic hover:shadow-comic-hover hover:translate-x-1 hover:translate-y-1">
+                                XEM LẠI!
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+              );
+          })}
         </div>
       )}
 
@@ -73,8 +123,26 @@ const Profile = () => {
               <h2 className="text-3xl font-comic uppercase">LỊCH SỬ ĐƠN HÀNG</h2>
               <button onClick={() => setShowOrderModal(false)} className="text-4xl font-black">&times;</button>
             </div>
-            <div className="p-4 overflow-y-auto min-h-[200px] flex items-center justify-center">
-              <p className="font-comic text-xl">CHƯA TỪNG MÚC CUỐN NÀO!</p>
+            <div className="p-4 overflow-y-auto max-h-[60vh] min-h-[200px] flex flex-col items-center justify-start gap-4">
+              {listOrders.length === 0 ? (
+                  <p className="font-comic text-xl mt-10">CHƯA TỪNG MÚC CUỐN NÀO!</p>
+              ) : (
+                  listOrders.map(order => (
+                      <div key={order.id} className="w-full bg-white border-4 border-black p-4 shadow-comic flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="flex flex-col">
+                              <span className="font-black text-lg">MÃ ĐƠN: #{order.id}</span>
+                              <span className="font-bold text-gray-600 text-sm">Ngày đặt: {new Date(order.created_at).toLocaleDateString()}</span>
+                              <span className="font-bold text-gray-600 text-sm">Địa chỉ: {order.customer_address}</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                              <span className="font-comic text-2xl text-primary">{order.total_amount.toLocaleString()}đ</span>
+                              <span className={`font-black uppercase px-2 py-1 border-2 border-black ${order.status === 'Chờ xác nhận' ? 'bg-yellow-400' : order.status === 'Đang giao' ? 'bg-blue-400' : order.status === 'Hoàn thành' ? 'bg-green-400' : 'bg-red-400'}`}>
+                                  {order.status}
+                              </span>
+                          </div>
+                      </div>
+                  ))
+              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ const upload = require('../middleware/uploadMiddleware');
 router.post('/avatar', authMiddleware, upload.single('avatar'), userController.uploadAvatar);
 router.post('/favorites/toggle', authMiddleware, userController.toggleFavorite);
 router.get('/favorites', authMiddleware, userController.getFavorites);
+router.post('/gacha/spin', authMiddleware, userController.spinGacha);
 
 router.get('/vip', authMiddleware, adminMiddleware, userController.getVipUsers);
 

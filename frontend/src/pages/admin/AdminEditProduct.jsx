@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 
 const AdminEditProduct = () => {
     const { id } = useParams();
@@ -14,17 +15,22 @@ const AdminEditProduct = () => {
         hinhAnh: ''
     });
     
-    // Mock fetch data
     useEffect(() => {
-        // Simulating data fetch based on id
-        setFormData({
-            tenSach: 'Naruto Tập ' + id,
-            giaTien: '25000',
-            soLuong: '15',
-            theLoai: 'Hành động',
-            trailerUrl: '',
-            hinhAnh: 'naruto.jpg'
-        });
+        axios.get(`http://localhost:5000/api/products/${id}`)
+            .then(res => {
+                if (res.data.success) {
+                    const product = res.data.product;
+                    setFormData({
+                        tenSach: product.name,
+                        giaTien: product.price.toString(),
+                        soLuong: product.stock.toString(),
+                        theLoai: product.category,
+                        trailerUrl: product.trailer_url || '',
+                        hinhAnh: product.image || ''
+                    });
+                }
+            })
+            .catch(err => console.error(err));
     }, [id]);
 
     const [newHinhAnh, setNewHinhAnh] = useState(null);
@@ -38,10 +44,10 @@ const AdminEditProduct = () => {
         setNewHinhAnh(e.target.files[0]);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
-        const { tenSach, giaTien, soLuong } = formData;
+        const { tenSach, giaTien, soLuong, theLoai, trailerUrl } = formData;
         let errorMsg = '';
 
         if (!tenSach.trim() || tenSach.trim().length < 3) {
@@ -57,9 +63,26 @@ const AdminEditProduct = () => {
             return;
         }
 
-        // Handle success logic here
-        console.log('Form updated', formData, newHinhAnh);
-        navigate('/admin/products');
+        const data = new FormData();
+        data.append('ten_sach', tenSach);
+        data.append('gia_tien', giaTien);
+        data.append('so_luong', soLuong);
+        data.append('the_loai', theLoai);
+        data.append('trailer_url', trailerUrl);
+        if (newHinhAnh) {
+            data.append('image', newHinhAnh);
+        }
+
+        try {
+            await axios.put(`http://localhost:5000/api/products/${id}`, data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            alert('Cập nhật truyện thành công!');
+            navigate('/admin/products');
+        } catch (err) {
+            console.error(err);
+            alert('Có lỗi xảy ra khi cập nhật!');
+        }
     };
 
     return (
